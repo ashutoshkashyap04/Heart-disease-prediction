@@ -85,7 +85,7 @@ if st.button("Predict"):
     }
     
     response = requests.post(
-        "http://127.0.0.1:8000/predict",
+        "https://heart-disease-prediction-api-ey22.onrender.com/predict",
         json = input_data
     )
     
