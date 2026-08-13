@@ -1,146 +1,103 @@
 import streamlit as st
-import joblib
-import pandas as pd
+import requests
 
-#Load model 
-model = joblib.load("heart_disease_model.pkl")
-scaler = joblib.load("scaler.pkl")
-columns = joblib.load("columns.pkl")
+st.title("Heart Disease Prediction")
 
+st.write("Enter the patient's details: ")
 
-st.title("Heart Disease Prediction App")
+#Input fields
 
-st.markdown("Provide the following details")
-
-#numerical features
-age = st.number_input("Age", min_value=1, max_value=120)
-
-resting_bp = st.number_input("Resting Blood Pressure")
-
-cholesterol = st.number_input("Cholesterol")
-
-max_hr = st.number_input("Maximum Heart Rate")
-
-oldpeak = st.number_input("Old Peak", step=0.1)
-
-
-# Non numerical features
-fasting_bs = st.selectbox(
-    "Fasting Blood Sugar > 120 mg/dl?",
-    ["No", "Yes"]
+age = st.number_input(
+    "Age",
+    min_value= 1,
+    max_value= 120,
+    value= 30
 )
-fasting_bs = 1 if fasting_bs == "Yes" else 0
 
 gender = st.selectbox(
     "Gender",
-    ["Male", "Female"]
+    ['M', 'F']
 )
 
-chest_pain = st.selectbox(
+chest_pain_type = st.selectbox(
     "Chest Pain Type",
-    ["ASY", "ATA", "NAP", "TA"]
+    ['ATA', 'NAP', 'ASY', 'TA']
 )
 
+resting_bp = st.number_input(
+    "Resting Blood Pressure",
+    min_value= 1,
+    value= 140
+)
+
+cholesterol = st.number_input(
+    "Cholesterol",
+    min_value= 0,
+    value= 200
+)
+
+fasting_bs = st.selectbox(
+    "Fasting Blood Sugar",
+    [0, 1]
+)
 
 resting_ecg = st.selectbox(
     "Resting ECG",
-    ["Normal", "LVH", "ST"]
+    ['Normal', 'ST', 'LVH']
 )
 
+max_hr = st.number_input(
+    "Maximum Heart Rate",
+    min_value= 1,
+    value= 150
+)
 
 exercise_angina = st.selectbox(
-    "Exercise Induced Angina",
-    ["No", "Yes"]
+    "Exercise Angina",
+    ['N', 'Y']
 )
 
+oldpeak = st.number_input(
+    "Oldpeak",
+    min_value= 0.0,
+    value= 0.0
+)
 
 st_slope = st.selectbox(
     "ST Slope",
-    ["Up", "Flat", "Down"]
+    ['Up', 'Flat', 'Down']
 )
 
-
 if st.button("Predict"):
+    
     input_data = {
         "Age": age,
+        "Sex": gender,
+        "ChestPainType": chest_pain_type,
         "RestingBP": resting_bp,
         "Cholesterol": cholesterol,
-        "FastingBS": 1 if fasting_bs == 'Yes' else 0,
+        "FastingBS": fasting_bs,
+        "RestingECG": resting_ecg,
         "MaxHR": max_hr,
+        "ExerciseAngina": exercise_angina,
         "Oldpeak": oldpeak,
-        
-        "Sex_M": 1 if gender == "Male" else 0,
-        
-        "ChestPainType_ATA": 0,
-        "ChestPainType_NAP": 0,
-        "ChestPainType_TA": 0,
-        
-        "RestingECG_Normal": 0,
-        "RestingECG_ST": 0,
-        
-        "ExerciseAngina_Y": 1 if exercise_angina == 'Yes' else 0,
-        
-        "ST_Slope_Flat": 0,
-        "ST_Slope_Up": 0
+        "ST_Slope": st_slope       
     }
     
-    
-    #chest pain encoding
-    if chest_pain == "ATA":
-        input_data['ChestPainType_ATA'] = 1
-
-    elif chest_pain == "NAP":
-        input_data['ChestPainType_NAP'] = 1
-
-    elif chest_pain == "TA":
-        input_data['ChestPainType_TA'] = 1
-        
-        
-    # Resting ECG encoding
-    if resting_ecg == "Normal":
-        input_data['RestingECG_Normal'] = 1
-
-    elif resting_ecg == "ST":
-        input_data['RestingECG_ST'] = 1
-        
-    #ST Slope Encoding
-    if st_slope == "Flat":
-        input_data['ST_Slope_Flat'] = 1
-
-    elif st_slope == "Up":
-        input_data['ST_Slope_Up'] = 1
-        
-    
-    #Creating dataframe    
-    input_df = pd.DataFrame([input_data])
-    
-    
-    #Scaling numerical columns
-    numeric_cols = [
-        'Age',
-        'RestingBP',
-        'Cholesterol',
-        'MaxHR',
-        'Oldpeak'
-    ]
-
-    input_df[numeric_cols] = scaler.transform(
-        input_df[numeric_cols]
+    response = requests.post(
+        "http://127.0.0.1:8000/predict",
+        json = input_data
     )
-        
-    #Prediction
-    prediction = model.predict(input_df)
-    probability = model.predict_proba(input_df)
     
-    # display result
-    if prediction[0] == 1:
-        st.error("High Risk of Heart Disease")
+    if response.status_code == 200:
+        result = response.json()
+        
+        if result["prediction"] == 1:
+            st.error("⚠️ Heart Disease Detected")
+        else:
+            st.success("✅ No Heart Disease Detected")
+
     else:
-        st.success("Low Risk of Heart Disease")
-
-    st.write(
-        f"Prediction Probability of Heart disease: {probability[0][1]:.2%}"
-    )
-
-
-
+        st.error("Prediction failed")
+    
+    
